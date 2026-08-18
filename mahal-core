@@ -1,0 +1,481 @@
+/*
+  MAHAL — core polish stylesheet (v1.0)
+  ============================================================
+  HOW TO USE
+  Paste the entire contents of this file into:
+    WordPress Admin → Appearance → Customize → Additional CSS
+
+  This one file improves ALL eight Mahal pages simultaneously
+  because they share the same CSS custom properties and class
+  names. No per-page edits needed.
+
+  WHAT'S IN HERE
+  1.  Performance hints (preconnect, font-display)
+  2.  Contrast fixes (ink-faint lifted for WCAG AA compliance)
+  3.  Skip-to-content link (keyboard navigation)
+  4.  Focus-visible styles (all interactive elements)
+  5.  Mobile navigation (hamburger → full slide-down menu)
+  6.  Responsive layout fixes (sidebar, grids, tables)
+  7.  Reduced-motion overrides (respects user OS preference)
+  8.  Form accessibility (error states, label association)
+  9.  Touch target sizing (minimum 44×44 px on mobile)
+  10. Print styles (clean single-column)
+  ============================================================ */
+
+/* ============================================================
+   1. PERFORMANCE HINTS
+   Add these <link> tags to your theme's <head> (or use a
+   plugin like "Head, Footer and Post Injections") for fastest
+   font loading. Listed here as comments so you know to add them.
+
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link rel="preconnect" href="https://api.anthropic.com">
+
+   Also add loading="lazy" to any <img> tags added in future
+   venue listing pages — the placeholder divs in current pages
+   don't need it but real images will.
+   ============================================================ */
+
+
+/* ============================================================
+   2. CONTRAST FIXES
+   Cream/black theme: --ink-faint is #736C61 (~4.6:1 on --bg
+   #F6F5D7), --ink-soft is #55504A (~7.6:1). Both clear WCAG AA
+   for normal text. Scoped to all Mahal page roots so it doesn't
+   leak into other WP content.
+   ============================================================ */
+#mahall,
+#mahall-venue,
+#mahall-owner,
+#mahall-reg,
+#mahall-dash,
+#mahall-admin,
+#mahall-pricing {
+  --ink-faint: #736C61;
+  --ink-soft: #55504A;
+}
+
+
+/* ============================================================
+   3. SKIP-TO-CONTENT LINK
+   Inject via WordPress (Appearance → Customize → Additional CSS
+   covers styles; add the HTML via a theme hook or the
+   "Header and Footer Scripts" plugin):
+
+   <a class="mahall-skip" href="#mahall-main-content">
+     Skip to main content
+   </a>
+
+   The link is visually hidden until focused — standard pattern.
+   ============================================================ */
+.mahall-skip {
+  position: fixed;
+  top: -100%;
+  left: 16px;
+  z-index: 9999;
+  background: #B5722A;
+  color: #1A1305;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  text-decoration: none;
+  transition: top .2s;
+  outline: none;
+}
+.mahall-skip:focus {
+  top: 16px;
+}
+
+
+/* ============================================================
+   4. FOCUS-VISIBLE STYLES
+   Removes the default browser outline (which is often invisible
+   on dark backgrounds) and replaces with a gold ring that
+   works on every Mahal page colour.
+   ============================================================ */
+
+/* Reset browser default on all Mahal roots */
+#mahall *:focus,
+#mahall-venue *:focus,
+#mahall-owner *:focus,
+#mahall-reg *:focus,
+#mahall-dash *:focus,
+#mahall-admin *:focus,
+#mahall-pricing *:focus {
+  outline: none;
+}
+
+/* Only show for keyboard navigation (not mouse clicks) */
+#mahall *:focus-visible,
+#mahall-venue *:focus-visible,
+#mahall-owner *:focus-visible,
+#mahall-reg *:focus-visible,
+#mahall-dash *:focus-visible,
+#mahall-admin *:focus-visible,
+#mahall-pricing *:focus-visible {
+  outline: 2px solid #B5722A;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Buttons and pills already have border-radius — match it */
+#mahall .btn:focus-visible,
+#mahall-venue .btn:focus-visible,
+#mahall-owner .btn:focus-visible,
+#mahall-reg .btn:focus-visible,
+#mahall-dash .btn:focus-visible,
+#mahall-admin .btn:focus-visible,
+#mahall-pricing .btn:focus-visible,
+#mahall .filter-pill:focus-visible,
+#mahall .cat-card:focus-visible,
+#mahall-pricing .plan-card:focus-visible,
+#mahall-pricing .faq-q:focus-visible,
+#mahall-pricing .aud-btn:focus-visible {
+  outline-radius: 999px;
+  border-radius: 999px;
+  outline-offset: 3px;
+}
+
+/* Input/textarea focus ring */
+#mahall input:focus-visible,
+#mahall textarea:focus-visible,
+#mahall select:focus-visible,
+#mahall-venue input:focus-visible,
+#mahall-venue textarea:focus-visible,
+#mahall-owner input:focus-visible,
+#mahall-owner textarea:focus-visible,
+#mahall-owner select:focus-visible,
+#mahall-reg input:focus-visible,
+#mahall-reg select:focus-visible,
+#mahall-dash input:focus-visible,
+#mahall-admin input:focus-visible,
+#mahall-admin select:focus-visible,
+#mahall-pricing input:focus-visible {
+  outline: 2px solid #B5722A;
+  outline-offset: 2px;
+  border-color: #B5722A !important;
+}
+
+
+/* ============================================================
+   5. MOBILE NAVIGATION
+   The hamburger button (`.navtoggle`) and mobile menu
+   (`.mobile-menu`) exist in the v0.6 homepage. These styles
+   make the menu look polished and the toggle animate.
+   The open/close JS is already in the homepage; this CSS
+   handles the visual treatment.
+   ============================================================ */
+
+/* Hamburger icon → animated X when menu is open */
+#mahall .navtoggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid rgba(34,31,31,0.12);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s;
+}
+#mahall .navtoggle:hover {
+  background: rgba(34,31,31,0.06);
+}
+#mahall .navtoggle:focus-visible {
+  outline: 2px solid #B5722A;
+  outline-offset: 2px;
+}
+
+/* Mobile menu: slide-down with smooth transition */
+#mahall .mobile-menu {
+  display: flex;
+  flex-direction: column;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .32s ease, padding .32s ease;
+  padding: 0 28px;
+  gap: 0;
+  border-bottom: none;
+  background: #FFFFFF;
+}
+#mahall .mobile-menu.open {
+  max-height: 320px;
+  padding: 16px 28px 20px;
+  border-bottom: 1px solid rgba(34,31,31,0.12);
+  gap: 0;
+}
+#mahall .mobile-menu a {
+  display: block;
+  padding: 12px 0;
+  font-size: 15px;
+  color: #55504A;
+  border-bottom: 1px solid rgba(34,31,31,0.07);
+  transition: color .15s;
+}
+#mahall .mobile-menu a:last-child {
+  border-bottom: none;
+}
+#mahall .mobile-menu a:hover,
+#mahall .mobile-menu a:focus-visible {
+  color: #221F1F;
+}
+
+@media (max-width: 860px) {
+  #mahall .navtoggle { display: flex; }
+  #mahall .navlinks  { display: none; }
+  #mahall .navcta    { display: none; }
+}
+@media (min-width: 861px) {
+  #mahall .mobile-menu { display: none !important; }
+}
+
+
+/* ============================================================
+   6. RESPONSIVE LAYOUT FIXES
+   ============================================================ */
+
+/* Dashboard sidebar: collapse to top bar on narrow screens */
+@media (max-width: 860px) {
+  #mahall-dash { flex-direction: column; }
+  #mahall-dash .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  #mahall-dash .sidebar::-webkit-scrollbar { display: none; }
+  #mahall-dash .sidebar-nav {
+    display: flex;
+    flex-direction: row;
+    padding: 6px 8px;
+    gap: 4px;
+    min-width: max-content;
+  }
+  #mahall-dash .nav-label  { display: none; }
+  #mahall-dash .sidebar-footer { display: none; }
+  #mahall-dash .stat-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Admin sidebar */
+  #mahall-admin { flex-direction: column; }
+  #mahall-admin .sidebar {
+    width: 100%; height: auto; position: static;
+  }
+  #mahall-admin .sb-nav {
+    display: flex; flex-direction: row;
+    overflow-x: auto; padding: 6px 8px;
+    min-width: max-content; gap: 4px;
+  }
+  #mahall-admin .sb-label { display: none; }
+  #mahall-admin .sb-foot  { display: none; }
+  #mahall-admin .stat-strip { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 560px) {
+  /* Venue grid: single column */
+  #mahall .venue-grid { grid-template-columns: 1fr; }
+  /* Category grid: 2 columns */
+  #mahall .cat-grid   { grid-template-columns: repeat(2, 1fr); }
+  /* Onboarding photo grid: 3 up */
+  #mahall-owner .photo-grid { grid-template-columns: repeat(3, 1fr); }
+  /* Plan grid: single column */
+  #mahall-pricing .plan-grid { grid-template-columns: 1fr; }
+  /* Client steps: single column */
+  #mahall-pricing .client-steps { grid-template-columns: 1fr; }
+  /* Owner dashboard stats: single column */
+  #mahall-dash .stat-grid { grid-template-columns: 1fr; }
+  #mahall-admin .stat-strip { grid-template-columns: 1fr; }
+  /* Venue detail stat row: wrap */
+  #mahall-venue .stat-row { flex-wrap: wrap; gap: 16px; }
+  /* Registration field rows: stack */
+  #mahall-reg .field-row { grid-template-columns: 1fr; }
+  #mahall-venue .field-row { flex-direction: column; }
+  /* Onboarding field rows: stack */
+  #mahall-owner .field-row { flex-direction: column; }
+  /* Comparison table: scroll horizontally */
+  .comp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* Dashboard lead detail: 2 col */
+  #mahall-dash .lead-detail-grid { grid-template-columns: 1fr 1fr; }
+  /* Admin venue card grid: 2 col */
+  #mahall-admin .vc-grid { grid-template-columns: 1fr 1fr; }
+  /* Padding reduction on small screens */
+  #mahall-dash .content,
+  #mahall-admin .content { padding: 14px; }
+  #mahall-pricing .plan-card { padding: 22px 18px; }
+}
+
+/* Concierge panel: full-width on very small screens */
+@media (max-width: 400px) {
+  #mahall .ai-panel {
+    right: 8px;
+    left: 8px;
+    width: auto;
+    bottom: 86px;
+  }
+}
+
+
+/* ============================================================
+   7. REDUCED-MOTION OVERRIDES
+   Respects the user's OS-level "Reduce Motion" setting.
+   Disables all animations, transitions, and transforms.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  #mahall *,
+  #mahall-venue *,
+  #mahall-owner *,
+  #mahall-reg *,
+  #mahall-dash *,
+  #mahall-admin *,
+  #mahall-pricing * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+  #mahall .ai-fab        { animation: none !important; }
+  #mahall .stitch        { opacity: 1 !important; transform: none !important; }
+  #mahall .reveal        { opacity: 1 !important; transform: none !important; }
+  #mahall .mobile-menu   { transition: none !important; }
+  #mahall-owner .btn     { transition: none !important; }
+  #mahall-pricing .toggle-thumb { transition: none !important; }
+  #mahall-pricing .faq-a { transition: none !important; max-height: none !important; }
+  #mahall-pricing .faq-item .faq-a { padding-bottom: 18px; }
+}
+
+
+/* ============================================================
+   8. FORM ACCESSIBILITY IMPROVEMENTS
+   Error state styling and required-field indicators.
+   ============================================================ */
+
+/* Required indicator — add aria-required="true" in HTML */
+#mahall-owner .field label[data-required]::after,
+#mahall-reg   .field label[data-required]::after,
+#mahall-venue .field label[data-required]::after {
+  content: ' *';
+  color: #B5532D;
+  font-size: 11px;
+}
+
+/* Invalid field state — add .invalid class via JS on submit */
+#mahall-owner .field input.invalid,
+#mahall-owner .field select.invalid,
+#mahall-owner .field textarea.invalid,
+#mahall-reg   .field input.invalid,
+#mahall-venue .field input.invalid,
+#mahall-venue .field textarea.invalid,
+#mahall       .search input.invalid {
+  border-color: #B5532D !important;
+  box-shadow: 0 0 0 2px rgba(181,83,45,0.2);
+}
+
+/* Inline error message — add .field-error span via JS */
+.field-error {
+  font-size: 12px;
+  color: #B5532D;
+  margin-top: 4px;
+  display: block;
+}
+
+/* Checkbox / radio accent */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #B5722A;
+}
+
+
+/* ============================================================
+   9. TOUCH TARGET SIZING
+   All interactive elements must be at least 44×44 px on touch
+   devices (WCAG 2.5.5 AAA / iOS/Android HIG).
+   ============================================================ */
+@media (pointer: coarse) {
+  #mahall .btn,
+  #mahall-venue .btn,
+  #mahall-owner .btn,
+  #mahall-reg .btn,
+  #mahall-dash .btn,
+  #mahall-admin .btn,
+  #mahall-pricing .btn {
+    min-height: 44px;
+  }
+  #mahall .filter-pill,
+  #mahall .mtab,
+  #mahall-dash .tab,
+  #mahall-admin .tab,
+  #mahall-pricing .tab,
+  #mahall-pricing .aud-btn {
+    min-height: 40px;
+  }
+  #mahall .cat-card {
+    min-height: 80px;
+  }
+  /* Nav items in collapsed sidebars */
+  #mahall-dash .nav-item,
+  #mahall-admin .sb-item {
+    min-height: 44px;
+    padding: 12px;
+  }
+  /* AI concierge fab — already 58px, confirmed OK */
+  /* Input fields */
+  #mahall input,
+  #mahall-venue input,
+  #mahall-owner input,
+  #mahall-owner select,
+  #mahall-reg input,
+  #mahall-reg select,
+  #mahall-dash input,
+  #mahall-admin input,
+  #mahall-admin select,
+  #mahall-pricing input {
+    min-height: 44px;
+    font-size: 16px; /* prevents iOS auto-zoom on focus */
+  }
+  /* Prevent iOS text size adjustment */
+  #mahall,
+  #mahall-venue,
+  #mahall-owner,
+  #mahall-reg,
+  #mahall-dash,
+  #mahall-admin,
+  #mahall-pricing {
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+
+/* ============================================================
+   10. PRINT STYLES
+   Clean single-column layout for printing venue detail pages.
+   ============================================================ */
+@media print {
+  #mahall-venue nav,
+  #mahall-venue .ai-fab,
+  #mahall-venue .ai-panel,
+  #mahall-venue .gallery-thumbs,
+  #mahall-venue .sidebar,
+  #mahall-venue footer { display: none !important; }
+
+  #mahall-venue { background: #fff; color: #111; }
+  #mahall-venue .layout { grid-template-columns: 1fr; }
+  #mahall-venue .gallery-main {
+    height: 220px;
+    background: #eee;
+    print-color-adjust: exact;
+  }
+  #mahall-venue h1,
+  #mahall-venue h2,
+  #mahall-venue h3 { color: #111; }
+  #mahall-venue p  { color: #444; }
+  #mahall-venue .amen {
+    background: #f5f5f5;
+    border-color: #ddd;
+    color: #333;
+  }
+}
