@@ -1,0 +1,218 @@
+# Mahal — Morocco Venue Marketplace
+
+**mahall.org** — connecting distinctive Moroccan venues with event planners, brands, and travellers.
+
+Stack: WordPress 6.4+ · Custom HTML blocks · PHP plugin · Claude AI via Anthropic API
+
+---
+
+## Deployment in two commands
+
+```bash
+# After uploading files and adding API keys to wp-config.php:
+
+./mahall-deploy.sh --path /var/www/mahall.org/public
+# Creates pages, activates plugin, seeds taxonomy, exports venues.json (~60s)
+
+./mahall-pages.sh --html-dir ./mahall-files --path /var/www/mahall.org/public
+# Populates all 11 pages with their HTML block content (~30s)
+```
+
+See **mahall-deploy-v2.0.md** for the full manual deployment guide.
+
+---
+
+## Archive contents (41 files)
+
+### Start here
+
+| File | Purpose |
+|---|---|
+| `README.md` | This file |
+| `mahall-deploy.sh` | WP-CLI script — activates plugin, creates pages, seeds taxonomy, exports venues |
+| `mahall-pages.sh` | WP-CLI script — populates all WP pages with HTML block content |
+| `mahall-deploy-v2.0.md` | Full production deployment guide (DNS, SSL, constants, Stripe, caching) |
+| `mahall-qa-v2.0.md` | 22-section QA checklist — run before going live |
+| `CHANGELOG.md` | Full version history v0.1 → v3.7 |
+
+### Pages — HTML files auto-installed by mahall-pages.sh
+
+| File | WP slug | Description |
+|---|---|---|
+| `mahall-homepage-v2.1.html` | `/` | Video hero, editorial picks, AI concierge, WhatsApp widget, GDPR banner |
+| `mahall-venues-v1.9.html` | `/venues` | Venue search: dual price, star rating filter, availability date, map view |
+| `single-mahall_venue-v2.0.php` | _(child theme)_ | Venue detail: gallery, inquiry form, availability, reviews, deposit CTA |
+| `mahall-owner-onboarding-v1.2.html` | `/list-your-venue` | 5-step wizard: Basics, Media, Plan, Review, Stripe Connect payouts |
+| `mahall-client-register-v1.3.html` | `/register` | Register/login: JWT auth, Google OAuth, B2C/B2B, role redirect |
+| `mahall-owner-dashboard-v1.9.html` | `/owner/dashboard` | Leads, analytics charts, reviews moderation, AI reply drafting |
+| `mahall-client-dashboard-v1.9.html` | `/my/dashboard` | Saved venues, inquiries with owner replies, deposit CTA, review prompts |
+| `mahall-admin-v1.6.html` | `/admin` | Approval queue, live venues, analytics, reviews moderation, A/B results |
+| `mahall-pricing-v2.0.html` | `/pricing` | Plan cards, annual toggle, 28-row comparison table, FAQ, testimonials |
+| `mahall-compare-v1.9.html` | `/compare` | Side-by-side venue comparison with floating tray |
+| `mahall-privacy-v1.1.html` | `/privacy` | GDPR + Law 09-08 privacy policy (requires legal review before go-live) |
+| `mahall-terms-v1.1.html` | `/terms` | Terms of service: deposits, cancellations, disputes (requires legal review) |
+
+### Embeddable widgets
+
+| File | Embed location |
+|---|---|
+| `mahall-availability-v1.8.html` | Owner dashboard "My listing" tab; venue detail page (after gallery) |
+| `mahall-reviews-v1.8.html` | Venue detail page (before footer) |
+| `mahall-map-embed-v1.2.html` | Venue detail page (replaces the `.map-box` div) |
+
+### Global scripts + CSS
+
+| File | Purpose |
+|---|---|
+| `mahall-i18n-v1.5.js` | EN / FR / AR language toggle with RTL support — enqueue globally |
+| `mahall-currency-v1.7.js` | MAD / EUR / USD real-time price conversion — enqueue globally |
+| `mahall-core-v1.0.css` | Design system tokens — paste into Customizer → Additional CSS |
+| `mahall-sw.js` | Service worker — save in **WordPress root** (not a subdirectory) |
+
+### Child theme files
+
+| File | Destination |
+|---|---|
+| `mahall-functions-sample.php` | Rename to `functions.php` in child theme root |
+| `404.php` | Child theme root — branded not-found page with venue search |
+
+### PHP plugin — all files go in `wp-content/plugins/mahall/`
+
+| File | Purpose |
+|---|---|
+| `mahall-plugin-v2.5.php` → `mahall.php` | Plugin entry point, module loader, admin health check (31 checks), venues export |
+| `mahall-cpt-v1.1.php` | CPT registration: mahall_venue, mahall_lead, mahall_review |
+| `mahall-ai-proxy-v0.7.php` | Core AI + REST endpoints (search, concierge, inquiry, onboarding, auth) |
+| `mahall-v1.1-additions.php` | Media upload to WP, view tracking, real analytics |
+| `mahall-v1.2-additions.php` | Reply time tracking, amenities meta box, JWT shim |
+| `mahall-v1.3-additions.php` | Saved venues, RFP, welcome email drip, PWA manifest |
+| `mahall-v1.4-additions.php` | Stripe webhook, admin analytics REST, i18n REST, exchange rates |
+| `mahall-v1.5-additions.php` | 9 branded HTML email templates, Twilio WhatsApp, sitemap |
+| `mahall-v1.6-additions.php` | Live exchange rates (24h cache), client reply notifications, A/B testing |
+| `mahall-v1.7-additions.php` | Availability calendar REST, review CPT, Stripe Connect OAuth |
+| `mahall-v1.8-additions.php` | Deposit PaymentIntent, venue comparison REST, reviews dashboard |
+| `mahall-v1.9-additions.php` | GDPR consent banner, cookie preferences, venue detail hooks, WhatsApp number |
+
+### Config + infrastructure
+
+| File | Destination |
+|---|---|
+| `composer.json` | Plugin directory — run `composer install --no-dev` |
+| `mahall.htaccess` | WordPress root — rename to `.htaccess` |
+
+---
+
+## wp-config.php constants required
+
+```php
+define('ANTHROPIC_API_KEY',               'sk-ant-...');
+define('MAHALL_STRIPE_SECRET',            'sk_live_...');
+define('MAHALL_STRIPE_PK',                'pk_live_...');
+define('MAHALL_STRIPE_WEBHOOK_SECRET',    'whsec_...');
+define('MAHALL_STRIPE_CONNECT_CLIENT_ID', 'ca_live_...');
+define('MAHALL_DEPOSIT_PERCENT',          20);
+define('MAHALL_TWILIO_SID',               'ACxxxx');
+define('MAHALL_TWILIO_TOKEN',             'xxxx');
+define('MAHALL_TWILIO_WHATSAPP',          'whatsapp:+14155238886');
+define('JWT_AUTH_SECRET_KEY',             'your-256-bit-secret');
+define('JWT_AUTH_CORS_ENABLE',            true);
+```
+
+---
+
+## REST API (42 endpoints)
+
+All at `/wp-json/mahall/v1/`
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/venues` | Catalogue with filters (category, city, guests, price, rating, outdoor, accessible, catering) |
+| GET/POST | `/venues/{id}/availability` | Blocked dates (read/write) |
+| GET/POST | `/venues/{id}/reviews` | Reviews (read/submit) |
+| GET | `/venues/compare?ids=1,3,7` | Side-by-side comparison data |
+| POST | `/inquiry` | Inquiry + dual email + WhatsApp notification |
+| POST | `/rfp` | Batch RFP to multiple venues |
+| POST | `/owner-onboarding` | Create venue listing |
+| POST | `/media-upload` | Upload file to WP media library |
+| POST | `/media-attach` | Attach media IDs to venue |
+| POST | `/venue/view` | View counter increment |
+| GET | `/owner/stats` | Owner analytics |
+| GET | `/owner/leads` | Owner leads |
+| POST | `/owner/lead-action` | Accept / decline / archive |
+| POST | `/owner/lead-reply` | Reply + notify client |
+| POST | `/owner/reply-time` | Log response time |
+| GET | `/owner/reviews` | Reviews for owner's venues |
+| GET | `/client/saved-venues` | Saved venue list |
+| POST | `/client/save-venue` | Toggle saved venue |
+| GET | `/client/inquiries` | Inquiry history |
+| POST | `/client-register` | Create client account |
+| POST | `/auth/token` | JWT login with mahall_role |
+| POST | `/deposit/create` | Stripe PaymentIntent (20%) |
+| POST | `/deposit/confirm` | Mark deposit paid |
+| POST | `/stripe/webhook` | Subscription lifecycle |
+| GET | `/stripe/connect` | Initiate Stripe Connect OAuth |
+| GET | `/stripe/connect/callback` | Complete Stripe Connect OAuth |
+| GET | `/exchange-rates` | MAD → EUR/USD/GBP (24h cached) |
+| GET | `/i18n/{locale}` | Translation strings (en/fr/ar) |
+| GET | `/manifest` | PWA manifest JSON |
+| POST | `/consent` | Log GDPR consent |
+| GET | `/cookies` | Cookie preference categories |
+| POST | `/ab/event` | A/B impression or click event |
+| GET | `/ab/results/{test}` | A/B test results |
+| GET | `/admin/analytics` | Platform-wide stats |
+| GET | `/admin/submissions` | Pending approval queue |
+| GET | `/admin/live-venues` | Published venues |
+| POST | `/admin/venue-action` | Approve / reject / feature / suspend |
+| POST | `/admin/reviews/{id}/moderate` | Approve or reject review |
+| POST | `/ai-search` | AI venue search |
+| POST | `/ai-concierge` | Multi-turn AI concierge |
+
+---
+
+## Design system
+
+| Token | Value | Use |
+|---|---|---|
+| `--bg` | `#16130F` | Page background |
+| `--bg-raised` | `#1E1A14` | Cards and sidebars |
+| `--bg-card` | `#241F18` | Nested cards |
+| `--ink` | `#F3ECE0` | Primary text |
+| `--ink-soft` | `#C4B9A8` | Secondary text |
+| `--ink-faint` | `#9A8F80` | Labels (WCAG AA) |
+| `--gold` | `#D98E33` | Primary accent |
+| `--gold-soft` | `#E8B978` | Hover states |
+| `--teal` | `#2F6F62` | Secondary accent / success |
+| `--teal-soft` | `#5C988B` | Lighter teal |
+| `--terracotta` | `#B5532D` | Error / danger |
+| `--line` | `rgba(243,236,224,0.12)` | Borders |
+
+Fonts: **Fraunces** (serif headings) · **Inter** (body) · **JetBrains Mono** (labels)
+
+---
+
+## Before going live — checklist
+
+- [ ] Fill in `[PLACEHOLDER]` company details in `mahall-privacy-v1.1.html` and `mahall-terms-v1.1.html`
+- [ ] Get both legal pages reviewed by a qualified lawyer
+- [ ] Set all API constants in `wp-config.php`
+- [ ] Upload hero video to `/wp-content/uploads/mahall/hero-reel.mp4`
+- [ ] Set WhatsApp number in WP Admin → Settings → General
+- [ ] Register Stripe webhook at `/wp-json/mahall/v1/stripe/webhook`
+- [ ] Approve Twilio WhatsApp sender for your number
+- [ ] Run `mahall-deploy.sh` + `mahall-pages.sh`
+- [ ] WP Admin → Mahal → Status → all checks green
+- [ ] Run QA checklist in `mahall-qa-v2.0.md` (22 sections)
+- [ ] Submit sitemap to Google Search Console
+
+---
+
+## Version summary
+
+| Release | Key deliverables |
+|---|---|
+| v0.1–v1.0 | Core pages, AI proxy, CPT, real data |
+| v1.1–v1.9 | Photo uploads, analytics, dashboards, i18n, Stripe, calendar, reviews, GDPR |
+| v2.0–v2.9 | QA docs, deploy guide, full page rewrites, WP plugin, service worker, admin tabs |
+| v3.0–v3.7 | QA sections 15–22, client/owner dashboards, Stripe onboarding, legal pages, 404, scripts |
+
+&copy; 2026 Mahal / Simpl'IT Vision Group &mdash; mahall.org
