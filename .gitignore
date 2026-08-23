@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.log
+.DS_Store
+
+# local JSON "database" — sample/dev data only, never commit real leads
+backend/data/db.json
+
+# generated local Oracle/APEX passwords — never commit
+backend/oracle/CREDENTIALS.local.md

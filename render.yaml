@@ -1,0 +1,31 @@
+# Render Blueprint — deploys mahal-v1 as a single web service.
+# Express serves the built React frontend (frontend/dist) AND the /api/*
+# routes from the same origin, so the frontend's hardcoded `BASE = "/api"`
+# (frontend/src/api.js) works with no rewrites/CORS config needed.
+#
+# To use: Render dashboard -> New + -> Blueprint -> connect this repo.
+# Render reads this file automatically once it's committed at repo root.
+#
+# DB_DRIVER defaults to `json` (backend/data/db.json) so the site works with
+# zero extra setup. Render's disk is ephemeral on the free/starter plan —
+# every deploy resets seed data back to backend/src/seed.js's 10 venues.
+# Switch DB_DRIVER to `oracle` and set ORDS_BASE_URL once the Oracle 26ai /
+# ORDS side (see backend/oracle/) is reachable from the public internet.
+
+services:
+  - type: web
+    name: mahal-v1
+    runtime: node
+    plan: starter
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_DRIVER
+        value: json
+      - key: ORDS_BASE_URL
+        value: http://localhost:8080/ords/mahaldb
+    healthCheckPath: /api/health

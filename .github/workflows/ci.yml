@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend-build:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: npm ci
+      - working-directory: frontend
+        run: npm run build
+
+  backend-check:
+    name: Backend syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - working-directory: backend
+        run: npm ci
+      - working-directory: backend
+        run: node --check src/index.js
+
+  # ---------------------------------------------------------------------
+  # Deploy: intentionally not implemented yet.
+  #
+  # No production hosting has been chosen (see the Launch Issue Log —
+  # "Choose & fund production hosting"). Once a target exists, add a job
+  # here that runs after frontend-build/backend-check succeed on main,
+  # e.g.:
+  #
+  #   deploy:
+  #     needs: [frontend-build, backend-check]
+  #     if: github.ref == 'refs/heads/main'
+  #     runs-on: ubuntu-latest
+  #     steps:
+  #       - uses: actions/checkout@v4
+  #       - run: <deploy frontend build output to the chosen static host>
+  #       - run: <deploy backend to the chosen server/PaaS>
+  # ---------------------------------------------------------------------
