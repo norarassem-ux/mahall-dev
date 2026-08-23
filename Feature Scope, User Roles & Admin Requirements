@@ -1,0 +1,163 @@
+# Mahal — Feature Scope, User Roles & Admin Requirements
+
+**Status:** Draft for review
+**Scope:** Defines who uses Mahal, what each role can do, what ships in v1 vs later, and what platform operators need to run it.
+**Grounding assumption:** The core transaction primitive is **RFQ → Proposal → Booking**, not ticket sales. Every role and feature below is built around that loop, plus the three adjacent layers (contributor directory, venue booking, sponsorship).
+
+---
+
+## 1. Identity Model — Accounts vs. Roles
+
+Before listing roles, one structural decision drives everything else: **a person/company is one Identity that can hold multiple Role Profiles.**
+
+A single user account (one login, one Identity record) can attach one or more of: Client Profile, Provider Profile, Venue Profile, Sponsor Profile. This matters in this market specifically because it's common for the same company to be, e.g., an event agency (Provider) that also books venues (Client) and occasionally sponsors industry events (Sponsor). Forcing separate logins per role would fragment reputation, billing, and messaging history that should stay unified.
+
+This keeps Identity/Access (schema group 1) clean and generic, while each role's specifics live in its own profile table (schema group 3) — consistent with the direction already set.
+
+---
+
+## 2. User Roles
+
+| Role | Who they are | Core capability |
+|---|---|---|
+| **Client / Organizer** | Anyone posting event work — corporates, agencies, individuals planning weddings/events | Posts RFQs, reviews proposals, books providers & venues, pays, rates |
+| **Provider — Freelancer** | Individual service seller (photographer, MC, decorator, etc.) | Browses/matches to RFQs, submits proposals, fulfills bookings |
+| **Provider — Vendor/Agency** | Company-level service seller with a team | Same as freelancer, plus manages sub-users/team members under one profile |
+| **Venue Owner/Manager** | Lists physical space(s) for events | Manages listing(s), availability, pricing, responds to venue RFQs/bookings |
+| **Contributor** *(tier, not a separate account type — see below)* | Any Provider or Venue opting into paid directory placement | Enhanced visibility, badge, featured placement — governed by subscription tier |
+| **Sponsor / Brand Partner** | Brands seeking event association/placement | Browses sponsorship opportunities, submits offers, manages sponsorship deals |
+| **Platform Admin** | Internal Mahal staff | Full platform oversight — see Section 4 |
+| **Support/Trust & Safety Agent** | Internal staff, scoped admin | Verification review, dispute handling, content moderation — subset of Admin permissions |
+
+**Open question to confirm:** does a Venue need its own role distinct from Provider, or is "Venue" simply a Provider whose category is "Venue Rental"? I've treated it as structurally distinct here (separate profile shape — capacity, floor plans, amenities — vs. a service provider's portfolio/skills shape), because the two have almost no overlapping fields. But if you want venues folded into the general Provider taxonomy to simplify the schema, that's a valid alternative — it changes schema group 3 from 2 profile shapes to 1 with conditional fields.
+
+---
+
+## 3. Feature Scope by Module
+
+Organized to match the six schema groups already established, so this maps directly onto the data model. **Phase** column: **MVP** = required for launch, **P2** = post-launch.
+
+### 3.1 Identity & Access
+| Feature | Phase |
+|---|---|
+| Registration/login (email + phone, per GCC/Morocco norms) | MVP |
+| Multi-role accounts (one Identity, multiple Role Profiles) | MVP |
+| Business/license verification (KYC for Providers & Venues) | MVP |
+| Team sub-users under Agency/Venue accounts, with permission levels | MVP |
+| Social login | P2 |
+| Two-factor authentication | P2 |
+
+### 3.2 Taxonomy & Discovery
+| Feature | Phase |
+|---|---|
+| Service category/subcategory tree (photography, catering, decor, AV, etc.) | MVP |
+| Event-type taxonomy (wedding, corporate, conference, private) | MVP |
+| Region taxonomy (UAE emirates, GCC countries, Moroccan cities) | MVP |
+| Search & filter (category, location, budget band, availability, rating) | MVP |
+| AI/semantic matching of RFQs to relevant Providers | P2 |
+
+### 3.3 Provider & Venue Profiles
+| Feature | Phase |
+|---|---|
+| Public profile pages (portfolio, bio, pricing indicators) | MVP |
+| Reviews & ratings, tied to completed bookings only | MVP |
+| Verification badge display | MVP |
+| Contributor tier (subscription-gated featured placement, directory boost) | MVP — even a basic 2-tier version, since it's core to monetization |
+| Portfolio media galleries with categorized tagging | MVP |
+| Video portfolio / reels | P2 |
+
+### 3.4 Marketplace Transaction Loop (core engine)
+| Feature | Phase |
+|---|---|
+| RFQ creation (brief, budget band, date, location, category) | MVP |
+| Proposal submission (price, scope, timeline, attachments) | MVP |
+| Proposal comparison view for Client (side-by-side shortlisting) | MVP |
+| In-thread negotiation/messaging tied to the RFQ | MVP |
+| Booking confirmation & basic contract/terms capture | MVP |
+| Post-booking review & rating | MVP |
+| Milestone-based payment tracking | P2 |
+| Auto-suggested Providers based on RFQ content | P2 |
+
+### 3.5 Venue Booking
+| Feature | Phase |
+|---|---|
+| Venue listing (capacity, layout, amenities, photos, base pricing) | MVP |
+| Availability calendar | MVP |
+| Venue RFQ/booking request through the same transaction loop as 3.4 | MVP *(pending the open question in Section 2)* |
+| Instant-book for confirmed-availability slots (no negotiation) | P2 |
+| Virtual tour/floor plan viewer | P2 |
+
+### 3.6 Sponsorship & Partnerships
+| Feature | Phase |
+|---|---|
+| Sponsorship opportunity listings (Organizer posts, seeking sponsors) | MVP |
+| Sponsor browsing & offer submission | MVP |
+| Sponsorship deal tracking (accepted/declined/in-negotiation) | MVP |
+| Tiered sponsorship packages (bronze/silver/gold style templates) | P2 |
+| Sponsorship analytics/ROI reporting for sponsors | P2 |
+
+### 3.7 Billing & Subscriptions
+| Feature | Phase |
+|---|---|
+| Commission on completed bookings | MVP |
+| Contributor subscription tiers (recurring billing) | MVP |
+| Regional payment gateway integration (UAE/GCC + Morocco appropriate rails) | MVP |
+| Invoicing (auto-generated per booking) | MVP |
+| Multi-currency support (AED, SAR, MAD, etc.) | MVP |
+| Provider payout management | MVP |
+| Promotional credits/discount codes | P2 |
+
+### 3.8 Cross-Cutting
+| Feature | Phase |
+|---|---|
+| In-app messaging + notifications (email/SMS/push) | MVP |
+| Dispute flagging on bookings | MVP |
+| Arabic/French/English localization | MVP — non-negotiable given the two target markets |
+| Admin-configurable content moderation queue | MVP |
+| Advanced analytics dashboards for Providers (lead conversion, etc.) | P2 |
+
+---
+
+## 4. Admin Needs
+
+Grouped by function, since "Admin" in a marketplace this complex isn't one role — it's several jobs that may map to different internal teams.
+
+**User & Verification Management**
+- Review/approve/reject Provider & Venue verification submissions (trade license, ID)
+- Suspend or ban accounts; view full account history across all role profiles tied to one Identity
+- Manually merge or split accounts (edge case handling)
+
+**Content & Trust**
+- Moderate reviews, profile content, portfolio media, RFQ postings for policy violations
+- Dispute resolution workspace (view full RFQ→proposal→booking→payment thread for a case)
+- Handle chargebacks/refund requests
+
+**Taxonomy & Catalog**
+- Add/edit/retire service categories, event types, regions
+- Manage featured/curated placements in the Contributor directory independent of algorithmic ranking
+
+**Commerce Oversight**
+- View all transactions, commission collected, payout status
+- Manage subscription tiers and pricing
+- Issue manual credits/refunds
+- Oversight of sponsorship deals (flag/approve high-value sponsorship contracts if needed)
+
+**Platform Configuration**
+- Region-specific settings: currency, tax/VAT rules (UAE vs. Morocco differ), language
+- Feature flags for phased rollout (MVP vs P2 features)
+
+**Analytics & Reporting**
+- GMV, active users by role, RFQ-to-booking conversion rate, churn on Contributor subscriptions
+- Exportable reports for leadership/investor reporting
+
+**Audit**
+- Immutable audit log of admin actions (who approved/suspended/refunded what, and when) — important given the platform is handling payments and business verification across two regulatory jurisdictions
+
+---
+
+## 5. Decisions Needing Sign-Off
+
+1. Is Venue a structurally separate role/profile, or a Provider category? (Section 2)
+2. Does venue booking share the RFQ negotiation loop, or does it need an instant-book calendar path too? (3.5)
+3. Contributor tier — confirm it's a visibility/subscription layer on existing Provider/Venue profiles, not a distinct account type.
+4. Sponsorship — confirm direction of the marketplace: do Organizers post opportunities for Sponsors to bid on, Sponsors post budgets for Organizers to pitch, or both?

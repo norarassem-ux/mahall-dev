@@ -1,0 +1,192 @@
+# Mahal — shared data model (v1)
+
+Reverse-engineered from the reference build (`mahall-v3.11-final`) — the WordPress
+prototype used custom post types + post/user meta instead of real tables, so this
+doc normalizes that into a proper relational schema. Use this as the shared
+contract between the APEX admin (Wing A) and the React/Node public site (Wing B).
+
+Sources checked: `mahall-cpt-v1.1.php`, `mahall-ai-proxy-v0.7.php`,
+`mahall-v1.1` through `v1.9-additions.php`, `README.md` (REST endpoint list).
+
+---
+
+## Entities
+
+### USERS
+One table for everyone — admins, venue owners, and clients (B2C or B2B).
+
+| Field | Type | Notes |
+|---|---|---|
+| user_id | PK | |
+| email | string, unique | login identity |
+| password_hash | string | |
+| role | enum: `admin`, `owner`, `client_b2c`, `client_b2b` | reference build calls this `mahall_role` |
+| first_name, last_name | string | |
+| company | string, nullable | only for `client_b2b` |
+| industry | string, nullable | only for `client_b2b` |
+| plan | enum: `free`, `featured`, `premium`, nullable | mirrors the owner's venue plan (kept on both user and venue in the prototype) |
+| created_at | timestamp | |
+
+### VENUE_CATEGORIES
+Lookup table. 8 fixed values in the reference build: Heritage & cultural, Hospitality & resort,
+Private & exclusive, Nature & adventure, Coastal & leisure, Urban & lifestyle,
+Corporate & MICE, Entertainment & production.
+
+| Field | Type |
+|---|---|
+| category_id | PK |
+| name | string |
+| slug | string, unique |
+
+### VENUES
+The core listing entity.
+
+| Field | Type | Notes |
+|---|---|---|
+| venue_id | PK | |
+| owner_id | FK → USERS | nullable while `status = draft` before onboarding completes |
+| category_id | FK → VENUE_CATEGORIES | |
+| name | string | |
+| slug | string, unique | |
+| description | text | |
+| city, area | string | |
+| capacity | int | max guests |
+| price_from | int | starting price |
+| currency | string, default `MAD` | site also displays EUR/USD/GBP via live conversion — conversion is a display-layer concern, not stored per venue |
+| rooms | int, nullable | |
+| size_sqm | string | |
+| host_name, host_email, host_phone | string | contact shown to inquirers; distinct from the owner user account |
+| video_url, tour_url | string, nullable | |
+| plan | enum: `free`, `featured`, `premium` | |
+| featured | boolean | homepage placement |
+| status | enum: `draft`, `pending`, `published`, `suspended` | maps to WP post_status `pending`/`publish`/`private` |
+| stripe_account_id | string, nullable | Stripe Connect payout account |
+| avg_rating | decimal | recomputed whenever a review is approved |
+| review_count | int | |
+| views_total | int | |
+| created_at | timestamp | |
+
+### VENUE_AMENITIES
+Normalizes what was a newline-separated text blob in the prototype into rows.
+
+| Field | Type |
+|---|---|
+| venue_id | FK → VENUES |
+| amenity | string |
+
+### VENUE_MEDIA
+Gallery images/video, upload-managed.
+
+| Field | Type |
+|---|---|
+| media_id | PK |
+| venue_id | FK → VENUES |
+| url | string |
+| media_type | enum: `image`, `video` |
+| sort_order | int |
+
+### AVAILABILITY_BLOCKS
+One row per blocked date (the prototype stored these as a JSON array on the venue —
+normalize to rows so the calendar can be queried directly).
+
+| Field | Type |
+|---|---|
+| block_id | PK |
+| venue_id | FK → VENUES |
+| blocked_date | date |
+
+### LEADS (inquiries)
+Covers both single-venue inquiries and RFP (request-for-proposal) batch sends —
+an RFP just creates one LEADS row per selected venue.
+
+| Field | Type | Notes |
+|---|---|---|
+| lead_id | PK | |
+| venue_id | FK → VENUES | |
+| client_id | FK → USERS, nullable | guests can submit inquiries without an account |
+| is_rfp | boolean | |
+| name, email, company | string | company only set on RFP/B2B |
+| event_type | string | |
+| event_date | date | |
+| guest_count | int | |
+| budget | string, nullable | RFP only |
+| message | text | |
+| status | enum: `new`, `accepted`, `declined`, `archived`, `deposit_paid` | |
+| host_reply | text, nullable | |
+| reply_hours | decimal, nullable | response-time tracking for owner analytics |
+| created_at | timestamp | |
+
+### REVIEWS
+Requires admin moderation before publishing.
+
+| Field | Type | Notes |
+|---|---|---|
+| review_id | PK | |
+| venue_id | FK → VENUES | |
+| lead_id | FK → LEADS, nullable | set when the reviewer's email matches an accepted lead for this venue — drives `verified_booking` |
+| author_name, author_email | string | |
+| rating | int, 1–5 | |
+| review_text | text, min 20 chars | |
+| event_type | string | |
+| verified_booking | boolean | |
+| status | enum: `pending`, `published`, `rejected` | |
+| created_at | timestamp | |
+
+### DEPOSITS
+20% deposit via Stripe PaymentIntent, tied to an accepted lead.
+
+| Field | Type |
+|---|---|
+| deposit_id | PK |
+| lead_id | FK → LEADS |
+| stripe_payment_intent_id | string |
+| amount_mad | int |
+| percent | int |
+| status | enum: `pending`, `paid` |
+| paid_at | timestamp, nullable |
+
+### SAVED_VENUES
+Many-to-many join for clients bookmarking venues.
+
+| Field | Type |
+|---|---|
+| user_id | FK → USERS |
+| venue_id | FK → VENUES |
+| saved_at | timestamp |
+| *(composite PK on user_id + venue_id)* | |
+
+---
+
+## Not modeled as relational tables
+
+The reference build keeps a few things as simple key-value config rather than
+entity rows — worth keeping that way rather than over-normalizing:
+
+- **A/B test results** — stored as a JSON blob per test name (`mahall_ab_<test>`).
+- **GDPR consent log** — an append-only array, capped at last 500 entries.
+- **Exchange rates** — cached externally-fetched values (MAD → EUR/USD/GBP), refreshed every 24h.
+- **i18n strings** — static translation dictionaries per locale (en/fr/ar), not user data.
+
+These can live in a settings/config table or plain app config rather than the
+core schema above.
+
+## Relationship summary
+
+- `USERS (owner) 1—N VENUES`
+- `VENUE_CATEGORIES 1—N VENUES`
+- `USERS (client) 1—N LEADS` (optional — guests allowed)
+- `VENUES 1—N LEADS`
+- `VENUES 1—N REVIEWS`
+- `LEADS 1—0/1 REVIEWS` (verification link)
+- `LEADS 1—0/1 DEPOSITS`
+- `VENUES 1—N VENUE_AMENITIES / VENUE_MEDIA / AVAILABILITY_BLOCKS`
+- `USERS N—N VENUES` via `SAVED_VENUES`
+
+## Cross-reference: REST surface
+
+The 42-endpoint REST API in the reference build (`/wp-json/mahall/v1/...`) maps
+cleanly onto this schema — e.g. `GET /venues` filters against VENUES +
+VENUE_CATEGORIES, `POST /venues/{id}/reviews` writes REVIEWS, `POST /deposit/create`
+writes DEPOSITS, `POST /rfp` batch-writes LEADS. Worth keeping that endpoint list
+open alongside this doc when scoping the admin (APEX) and public (Node) API layers,
+since it's effectively the contract both wings need to implement against.

@@ -1,89 +1,111 @@
-# Mahal v1 — public site (Wing B)
+# Mahal v1 — Event Venue Marketplace (Docker Deployment)
 
-React + Node.js implementation of the public-facing side of Mahal, per the
-training blueprint's "Dev Plan" tab (`Training - Dev Plan/mahal_training_plan v2.html`).
-This covers the **React/Node wing** (Gamal's track) — venue listing/search, venue
-detail with inquiry form, owner listing creation, account/auth, and static
-marketing pages.
+A full-stack React + Node.js platform for discovering and listing event venues in Morocco, now containerized with multi-stage Docker builds and docker-compose orchestration.
 
-Not included: the Oracle APEX admin console (Wing A / Nora's track) — that
-needs someone logged into an APEX workspace, which this can't do on its own
-(see [backend/oracle/CREDENTIALS.local.md](backend/oracle/CREDENTIALS.local.md),
-gitignored, for the login).
+## Features
 
-Contributing? See [CONTRIBUTING.md](./CONTRIBUTING.md) for the branch/PR
-workflow — short version: branch off `main`, PR back in, squash-merge.
+- **Venue Search & Discovery**: Browse 12+ seeded venues with advanced filtering (category, city, capacity, price)
+- **Venue Listings**: Owners can create and manage venue listings
+- **JWT Authentication**: Register, login, demo accounts included
+- **Inquiry/Lead Capture**: Clients submit booking inquiries tied to venues
+- **Real Aggregations**: Rating and review counts are trigger-computed from actual review data
+- **Support Chat Widget**: Client-side FAQ bot (no external API)
+- **Oracle Integration**: Optional dual-driver support (JSON default, Oracle via ORDS)
 
 ## Stack
 
-- `backend/` — Express REST API. Data layer is a pluggable store
-  (`backend/src/db.js`, `DB_DRIVER=json` or `oracle`):
-  - `jsonStore` — a local JSON file, zero setup, used by default.
-  - `oracleStore` — talks to a local Oracle DB through **ORDS AutoREST**
-    (no native `oracledb` driver needed). See
-    [backend/oracle/](backend/oracle/) for the schema, provisioning
-    scripts, and [ER-DIAGRAM.md](backend/oracle/ER-DIAGRAM.md).
-- `frontend/` — React (Vite) SPA. Design tokens lifted from the existing
-  WordPress build's `mahall-core-v1.0.css` (cream/gold/teal theme) so it's
-  visually consistent with the rest of the Mahal brand.
+- **Backend**: Express.js REST API (`backend/src`)
+  - Data layer: pluggable (`DB_DRIVER=json` or `oracle`)
+  - JSON store: local `db.json` for dev/demo
+  - Oracle store: ORDS AutoREST gateway (no native driver needed)
+- **Frontend**: React 18 + Vite SPA (`frontend/src`)
+  - Responsive design (desktop, tablet, mobile)
+  - Client-side routing with React Router
+- **Database**: Optional Oracle 26ai + ORDS (provisioned with full schema and seed data)
+- **Containerization**: Multi-stage Docker build + docker-compose
 
-## Run it
+## Quick Start (Docker)
+
+```bash
+cd mahal-v1
+docker compose up -d --build
+```
+
+Then:
+- Frontend/Backend: http://localhost:4000
+- API: http://localhost:4000/api/*
+- Oracle DB: localhost:1521 (optional, provisioned)
+
+Demo logins:
+- **Client**: `client@example.com` / `password123`
+- **Owner**: `owner@example.com` / `password123`
+
+## Local Development (without Docker)
 
 ```bash
 # Terminal 1 — backend (http://localhost:4000)
 cd backend
 npm install
-cp .env.example .env    # DB_DRIVER=json needs no further setup
-npm run seed             # writes backend/data/db.json with 10 sample venues + 2 demo users
+cp .env.example .env    # DB_DRIVER=json (default)
+npm run seed
 npm start
 
-# Terminal 2 — frontend (http://localhost:5173, proxies /api to :4000)
+# Terminal 2 — frontend (http://localhost:5173)
 cd frontend
 npm install
 npm run dev
 ```
 
-Demo logins (seeded): `client@example.com` / `owner@example.com`, password `password123`.
+Frontend proxies `/api` to backend on `:4000`.
 
-### Running against Oracle instead
+## Files Added for Docker Deployment
 
-Needs a local Oracle DB + APEX + ORDS install. Start ORDS
-(`java -jar ords.war --config <dir> serve`), then run the scripts in
-[backend/oracle/](backend/oracle/) in order: `provision_mahaldb.sql`,
-`enable_rest_mahaldb.sql`, `seed_mahaldb.sql`, `seed_reviews.sql`. Set
-`DB_DRIVER=oracle` in `backend/.env` and restart the backend — no frontend
-or route changes needed either way.
+- **`Dockerfile`**: Multi-stage build (frontend build + backend bundle)
+- **`docker-compose.yml`**: Orchestrates backend, optional Oracle 26ai container
+- **`.dockerignore`**: Excludes `.git`, `node_modules`, `.env`, etc.
+- **`backend/.env`**: Pre-configured for JSON driver (`DB_DRIVER=json`)
 
-## What's built
+## Switching to Oracle (if running Oracle container)
 
-- `GET /api/venues` — search & filter (category, city, minGuests, maxPrice, q)
-- `GET /api/venues/:idOrSlug`
-- `POST /api/venues` — create a listing (owner accounts only)
-- `POST /api/auth/register`, `/login`, `GET /me` — JWT auth
-- `POST /api/inquiries` — booking/inquiry request tied to a venue (captures
-  `user_id` if the submitter is logged in, stays anonymous otherwise)
-- `POST /api/inquiries/rfp` — batch request to multiple venues
-- `POST /api/contact` — general marketing-site contact form
-- `GET /api/owner/venues`, `/api/owner/inquiries` — owner-scoped "my
-  listings" / "my leads" (filtered by `venues.owner_id`)
-- Pages: Home (hero, category grid, editorial picks, how-it-works),
-  Venues (search/filter), Venue detail (with inquiry form), List your venue
-  (owner-only creation form), Owner dashboard (my venues + leads),
-  Register, Login, About, Contact, FAQ
-- `venues.rating`/`reviews_count` are real, trigger-computed aggregates
-  off a `reviews` table now, not static seed numbers — see ER-DIAGRAM.md
-- Support chat widget (floating, bottom-right) — a free, rule-based FAQ
-  bot (`frontend/src/components/SupportWidget.jsx`), keyword-matched
-  against canned answers about pricing/booking/listing. No external API,
-  no API key, no cost — entirely client-side.
+1. Update `backend/.env`:
+   ```
+   DB_DRIVER=oracle
+   ORDS_BASE_URL=http://mahal-oracle-26ai:8080/ords/mahaldb
+   ```
 
-## What's next (per the training plan)
+2. Restart backend:
+   ```bash
+   docker compose up -d
+   ```
 
-- Booking/payment/review *creation* flows — the `bookings`, `payments`,
-  and `reviews` tables exist (see ER-DIAGRAM.md) but there's no UI yet
-  for a client to actually book, pay, or leave a review
-- Owner dashboard: listing edit/status management (currently read-only —
-  view listings and leads, no editing yet)
-- Venue comparison (`/compare`) and saved venues
-- Static marketing pages (About/Contact/FAQ exist; gallery/services still open)
-- SEO, analytics, deploy pipeline — see "Pure website" and "QA, Launch" phases
+See `backend/oracle/` for full schema, provisioning scripts, and ER diagram.
+
+## API Endpoints
+
+### Public
+- `GET /api/health` — service status
+- `GET /api/stats` — venue/city/category counts
+- `GET /api/venues` — list all (search/filter: `?category=heritage&city=Marrakech&minGuests=50&maxPrice=5000&q=riad`)
+- `GET /api/venues/:idOrSlug` — venue detail
+- `POST /api/contact` — contact form
+
+### Auth
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me` — current user (JWT)
+
+### Venues (Owner)
+- `POST /api/venues` — create listing (owner only)
+- `GET /api/owner/venues` — my listings
+
+### Inquiries (Public/Auth)
+- `POST /api/inquiries` — submit booking inquiry
+- `GET /api/owner/inquiries` — my leads (owner only)
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for branch/PR workflow.
+
+## License
+
+Proprietary — Mahal Project
