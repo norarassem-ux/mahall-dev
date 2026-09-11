@@ -1,19 +1,4 @@
 services:
-  mahal-backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: mahal-backend
-    ports:
-      - "4000:4000"
-    env_file: backend/.env
-    depends_on:
-      mahal-oracle-26ai:
-        condition: service_healthy
-    networks:
-      - mahal
-    restart: unless-stopped
-
   mahal-oracle-26ai:
     container_name: mahal-oracle-26ai
     image: container-registry.oracle.com/database/free:latest
@@ -24,6 +9,10 @@ services:
       ORACLE_PWD: ${ORACLE_PWD:-Oracle123}
     volumes:
       - oracle-data:/opt/oracle/oradata
+      - ./01_provision_mahaldb.sql:/docker-entrypoint-initdb.d/01_provision_mahaldb.sql
+      - ./02_enable_rest_mahaldb.sql:/docker-entrypoint-initdb.d/02_enable_rest_mahaldb.sql
+      - ./03_seed_mahaldb.sql:/docker-entrypoint-initdb.d/03_seed_mahaldb.sql
+      - ./04_seed_reviews.sql:/docker-entrypoint-initdb.d/04_seed_reviews.sql
     networks:
       - mahal
     healthcheck:
@@ -32,6 +21,47 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
+    restart: unless-stopped
+
+  mahal-ords:
+    container_name: mahal-ords
+    image: container-registry.oracle.com/database/ords:latest
+    ports:
+      - "8080:8080"
+    environment:
+      ORACLE_HOST: mahal-oracle-26ai
+      ORACLE_PORT: 1521
+      ORACLE_SID: FREE
+      ORACLE_PWD: ${ORACLE_PWD:-Oracle123}
+      APEX_PUBLIC_USER_PASSWORD: ${APEX_PUBLIC_USER_PASSWORD:-ApexPublic123}
+      APEX_LISTENER_PASSWORD: ${APEX_LISTENER_PASSWORD:-ApexListener123}
+      APEX_REST_PASSWORD: ${APEX_REST_PASSWORD:-ApexRest123}
+    depends_on:
+      mahal-oracle-26ai:
+        condition: service_healthy
+    networks:
+      - mahal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/ords/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+
+  mahal-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mahal-backend
+    ports:
+      - "4000:4000"
+    env_file: backend/.env
+    depends_on:
+      mahal-ords:
+        condition: service_healthy
+    networks:
+      - mahal
     restart: unless-stopped
 
 networks:
