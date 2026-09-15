@@ -189,15 +189,40 @@ parameter's valid values aren't obvious.
 - `http://localhost:8080/ords/apex` → APEX workspace login, workspace
   `MAHALDB`, user `ADMIN` — full admin/developer rights confirmed
 
+## 6.5. APEX app export/backup habit (do this regularly — see why below)
+
+**App 102, the original "Mahal Admin" APEX app, was lost completely** —
+App Builder showed 0 applications, Workspace Home showed 0 applications,
+and Workspace Utilities → Manage Backups was empty. No cause was ever
+found, and nothing was recoverable. It was rebuilt from scratch as
+**App 100**. Don't let this happen again — export after any meaningful
+change to app 100 (a page redesign, new region, fixed bug) and commit
+the export alongside your other changes, the same way you'd commit code:
+
+1. App Builder → open **Application 100** → **App Builder actions** (or
+   the wrench/utilities icon) → **Export**.
+2. Application: 100. Format: **SQL**. Type: **Standard Export** (the
+   default — includes developer metadata, recommended for source
+   control).
+3. Click Export — downloads `f100.sql`.
+4. Replace `backend/oracle/f100.sql` in the repo with the new export and
+   commit it. To reimport if App 100 is ever lost again: run
+   `f100.sql` as the `MAHALDB` schema owner (or a user with
+   `APEX_ADMINISTRATOR_ROLE`) via sqlplus or SQL Commands.
+
+`backend/oracle/f100.sql` (first committed 2026-09-15, exported right
+after the App 100 rebuild) is the current baseline — keep it up to date.
+
 ## 7. Still open
 
 - **APEX admin pages/reports** — App 102 (the original "Mahal Admin"
-  APEX app) was lost with no backup and was rebuilt from scratch as
-  **App 100** (same name, "Mahal Admin"): Venues report/form, Manage
-  Inquiries grid, Reviews grid, Analytics chart. Reviews page had a
-  wizard-introduced bug (ID column wrongly wired to a venue-name LOV that
-  belongs on VENUE_ID instead) — verify this is fixed before relying on
-  that page.
+  APEX app) was lost with no backup (see §6.5) and was rebuilt from
+  scratch as **App 100** (same name, "Mahal Admin"): Venues report/form,
+  Manage Inquiries grid, Reviews grid, Analytics chart. Reviews page had
+  a wizard-introduced bug (ID column wrongly wired to a venue-name LOV
+  that belongs on VENUE_ID instead) — fixed 2026-09-15 by deleting and
+  recreating the Interactive Grid region fresh against the REVIEWS table
+  (a column-type edit alone wasn't enough).
 - ~~Wrap ORDS as a proper Windows service~~ — done, see §3.5. Run
   `install-ords-service.ps1` once if you haven't yet.
 - Deploying `mahal-v1` itself (Render) is a separate, not-yet-actioned
