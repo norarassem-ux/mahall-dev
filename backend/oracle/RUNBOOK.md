@@ -86,15 +86,16 @@ C:\26_26\ords\bin\ords.exe --config C:\ords_config config set standalone.static.
 
 ## 4. Run it day to day
 
-**ORDS (window 1) no longer needs a terminal window at all — see §3.5
-below.** Once `install-ords-service.ps1` has been run once, ORDS starts
-itself at boot and restarts itself if it ever dies. Only backend and
-frontend still need manual terminal windows:
+**ORDS and the backend no longer need terminal windows at all — see §3.5
+and §3.6 below.** Once `install-ords-service.ps1` and
+`install-backend-service.ps1` have each been run once, both start
+themselves at boot and restart themselves if they ever die or stop
+responding. Only the frontend still needs a manual terminal window:
 
 | Window | Command | URL |
 |---|---|---|
 | ~~1 — ORDS~~ | now automatic — see §3.5 | http://localhost:8080 |
-| 2 — Backend | `cd mahal-v1\backend && npm start` | http://localhost:4000 (API only, no homepage) |
+| ~~2 — Backend~~ | now automatic — see §3.6 | http://localhost:4000 (API only, no homepage) |
 | 3 — Frontend | `cd mahal-v1\frontend && npm run dev` | **http://localhost:5173** ← the actual site |
 
 If you ever need to run ORDS manually instead (e.g. debugging), the
@@ -113,6 +114,10 @@ If ORDS won't start with "port 8080 already in use":
 netstat -ano | findstr :8080
 taskkill /PID <pid> /F
 ```
+
+The same applies to the backend on port 4000 — if it's stuck bound but not
+responding (see §3.6), find the PID with `netstat -ano | findstr :4000`
+and kill it the same way before restarting.
 
 ## 3.5. Permanent ORDS startup (recommended — do this once)
 
@@ -156,6 +161,54 @@ ORDS_BASE_URL=http://localhost:8080/ords/mahaldb
 ```
 (`DB_DRIVER=json` also works, with no Oracle needed, for pure frontend
 work — see the root `README.md`.)
+
+## 3.6. Permanent backend startup (recommended — do this once)
+
+The backend (window 2 above, `npm start`) turned out to be just as
+vulnerable to the Quick Edit Mode failure as ORDS was. On 2026-09-15 it
+was found `LISTENING` on port 4000 (confirmed via `netstat`) but not
+answering *any* request — not even `/api/health`, which touches no
+database at all — almost certainly the same "clicked into the console
+window and paused it" failure as §3.5, just hitting the backend's window
+instead of ORDS's. Fixed the same way: a Scheduled Task instead of a
+foreground process.
+
+`backend/oracle/install-backend-service.ps1` does this. **Run once, in an
+elevated PowerShell:**
+```
+cd N:\mahal\mahal-v1\backend\oracle
+.\install-backend-service.ps1
+```
+
+What it sets up (task name **"Mahal Backend Server"** in Task Scheduler):
+- Finds and kills whatever's currently bound to port 4000 first (only that
+  process, not every `node.exe` — safe to run even with the frontend's
+  Vite dev server also running as `node.exe` on a different port)
+- Starts automatically 4 minutes after every boot (2 minutes after ORDS,
+  so ORDS is already answering by the time the backend's first Oracle call
+  happens)
+- Re-checks every 5 minutes and restarts the backend if it isn't running
+  (same self-healing watchdog pattern as ORDS)
+- Runs as SYSTEM with no visible console window
+- Logs to `backend/backend.log` — check that file instead of needing a
+  terminal window open if something looks wrong
+- No execution time limit
+
+To check on it later:
+```
+schtasks /Query /TN "Mahal Backend Server" /V /FO LIST
+```
+To stop it (e.g. for maintenance):
+```
+schtasks /End /TN "Mahal Backend Server"
+```
+
+(Confirmed `N:` is a real local Fixed Drive on nora — not a `net use`
+mapping or a `subst` alias — via `fsutil fsinfo drivetype N:`, so the
+SYSTEM-context task can use `N:\...` paths directly with no translation
+needed. If this is ever run on a machine where `N:` *is* a mapped or
+`subst` drive, resolve it to a real UNC/local path first — a SYSTEM task
+can't see per-user drive mappings.)
 
 ## 5. Why step 2.2 exists — two gotchas that cost real time
 
@@ -225,6 +278,8 @@ after the App 100 rebuild) is the current baseline — keep it up to date.
   (a column-type edit alone wasn't enough).
 - ~~Wrap ORDS as a proper Windows service~~ — done, see §3.5. Run
   `install-ords-service.ps1` once if you haven't yet.
+- ~~Wrap the backend as a proper Windows service~~ — done, see §3.6. Run
+  `install-backend-service.ps1` once if you haven't yet.
 - Deploying `mahal-v1` itself (Render) is a separate, not-yet-actioned
   track — see `DEPLOY.md` / `render.yaml`. Render's disk is ephemeral and
   can't reach a localhost-only Oracle DB, so a hosted deployment would run
@@ -242,5 +297,22 @@ after the App 100 rebuild) is the current baseline — keep it up to date.
    an OS command into an active `sqlplus` session, or a new command into a
    window already busy running a foreground server. Check the prompt
    before typing.
-4. All 3 windows in step 4 must stay open and untouched at once — closing
-   *or* clicking into any one of them silently breaks things elsewhere.
+4. Only the frontend window (window 3) needs to stay open now — ORDS and
+   the backend run as Scheduled Tasks (§3.5, §3.6) with no window to
+   close or click into.
+5. `cmd.exe`'s plain `cd` does **not** switch drive letters — running
+   `cd N:\mahal\...` while sitting on `C:` silently leaves you on `C:`
+   still (next command fails with a confusing "file not found" pointing
+   at the wrong drive). Use `cd /d N:\mahal\...` instead, or switch
+   drives first by typing `N:` on its own line.
+6. `wmic` is removed on newer Windows builds — use `fsutil fsinfo
+   drivetype <letter>:` instead to check whether a drive is a real local
+   disk ("Fixed Drive") vs. a network drive; `net use` and `subst` only
+   show *mapped*/`subst`'d drives, not real disk letters, so both coming
+   back empty doesn't mean the drive doesn't exist.
+7. If you ever hand-edit a Scheduled Task XML (as `install-ords-service.ps1`
+   and `install-backend-service.ps1` do via `schtasks /Create /XML`):
+   it's real XML, so `&` inside an `<Arguments>` value (e.g. `2>&1` for
+   log redirection) must be escaped as `&amp;`, or `schtasks` rejects the
+   whole file with "The task XML is malformed" — a bug hit and fixed
+   2026-09-15 while writing `install-backend-service.ps1`.
