@@ -84,24 +84,67 @@ landed where you told it to:
 C:\26_26\ords\bin\ords.exe --config C:\ords_config config set standalone.static.path "C:\26_26\apex\apex\images"
 ```
 
-## 4. Run it day to day — 3 terminal windows, all required simultaneously
+## 4. Run it day to day
+
+**ORDS (window 1) no longer needs a terminal window at all — see §3.5
+below.** Once `install-ords-service.ps1` has been run once, ORDS starts
+itself at boot and restarts itself if it ever dies. Only backend and
+frontend still need manual terminal windows:
 
 | Window | Command | URL |
 |---|---|---|
-| 1 — ORDS | `C:\26_26\ords\bin\ords.exe --config C:\ords_config serve` | http://localhost:8080 |
+| ~~1 — ORDS~~ | now automatic — see §3.5 | http://localhost:8080 |
 | 2 — Backend | `cd mahal-v1\backend && npm start` | http://localhost:4000 (API only, no homepage) |
 | 3 — Frontend | `cd mahal-v1\frontend && npm run dev` | **http://localhost:5173** ← the actual site |
 
-**Do not click inside the ORDS window once it's running.** Clicking
-into a Command Prompt window triggers Windows "Quick Edit Mode," which
-*pauses* the whole process until Enter is pressed again — port 8080 goes
+If you ever need to run ORDS manually instead (e.g. debugging), the
+original command still works:
+```
+C:\26_26\ords\bin\ords.exe --config C:\ords_config serve
+```
+**Do not click inside that window if you do this.** Clicking into a
+Command Prompt window triggers Windows "Quick Edit Mode," which *pauses*
+the whole process until Enter is pressed again — port 8080 goes
 uncontactable and it looks exactly like a crash, but the process is only
-suspended. Minimize the window instead of clicking into it.
+suspended. This is exactly the failure §3.5 exists to eliminate.
 
 If ORDS won't start with "port 8080 already in use":
 ```
 netstat -ano | findstr :8080
 taskkill /PID <pid> /F
+```
+
+## 3.5. Permanent ORDS startup (recommended — do this once)
+
+ORDS used to require a permanently-open Command Prompt window (window 1
+above), which was fragile: clicking into it paused it (Quick Edit Mode),
+and it never came back after a crash or reboot. This is fixed by
+registering ORDS as a Windows Scheduled Task instead of a foreground
+process.
+
+`backend/oracle/install-ords-service.ps1` does this. **Run once, in an
+elevated PowerShell:**
+```
+cd N:\mahal\mahal-v1\backend\oracle
+.\install-ords-service.ps1
+```
+
+What it sets up (task name **"ORDS Server"** in Task Scheduler):
+- Starts automatically 2 minutes after every boot
+- Re-checks every 5 minutes and restarts ORDS if it isn't running
+  (self-healing watchdog — this is what makes it survive indefinitely,
+  not just up to some crash-restart limit)
+- Runs as SYSTEM with no visible console window — nothing to
+  accidentally click into, so Quick Edit Mode can't pause it anymore
+- No execution time limit, so Windows won't kill it after a few days
+
+To check on it later:
+```
+Get-ScheduledTask -TaskName "ORDS Server" | Get-ScheduledTaskInfo
+```
+To stop it (e.g. for maintenance):
+```
+Stop-ScheduledTask -TaskName "ORDS Server"
 ```
 
 `backend/.env` for the Oracle-backed setup:
@@ -148,13 +191,15 @@ parameter's valid values aren't obvious.
 
 ## 7. Still open
 
-- **APEX admin pages/reports have not been built yet** — venues
-  interactive report, approval queue, reviews moderation, a basic
-  analytics chart, inside the `MAHALDB` workspace. This is the next real
-  piece of work; everything above is the plumbing it depends on.
-- Consider wrapping ORDS as a proper Windows service (`nssm` or similar)
-  so it survives without a permanently-open, never-clicked terminal
-  window.
+- **APEX admin pages/reports** — App 102 (the original "Mahal Admin"
+  APEX app) was lost with no backup and was rebuilt from scratch as
+  **App 100** (same name, "Mahal Admin"): Venues report/form, Manage
+  Inquiries grid, Reviews grid, Analytics chart. Reviews page had a
+  wizard-introduced bug (ID column wrongly wired to a venue-name LOV that
+  belongs on VENUE_ID instead) — verify this is fixed before relying on
+  that page.
+- ~~Wrap ORDS as a proper Windows service~~ — done, see §3.5. Run
+  `install-ords-service.ps1` once if you haven't yet.
 - Deploying `mahal-v1` itself (Render) is a separate, not-yet-actioned
   track — see `DEPLOY.md` / `render.yaml`. Render's disk is ephemeral and
   can't reach a localhost-only Oracle DB, so a hosted deployment would run
