@@ -86,17 +86,21 @@ C:\26_26\ords\bin\ords.exe --config C:\ords_config config set standalone.static.
 
 ## 4. Run it day to day
 
-**ORDS and the backend no longer need terminal windows at all — see §3.5
-and §3.6 below.** Once `install-ords-service.ps1` and
-`install-backend-service.ps1` have each been run once, both start
-themselves at boot and restart themselves if they ever die or stop
-responding. Only the frontend still needs a manual terminal window:
+**None of the three need a terminal window anymore — see §3.5, §3.6 and
+§3.7 below.** Once `install-ords-service.ps1`,
+`install-backend-service.ps1` and `install-frontend-service.ps1` have
+each been run once, all three start themselves at boot and restart
+themselves if they ever die or stop responding:
 
 | Window | Command | URL |
 |---|---|---|
 | ~~1 — ORDS~~ | now automatic — see §3.5 | http://localhost:8080 |
 | ~~2 — Backend~~ | now automatic — see §3.6 | http://localhost:4000 (API only, no homepage) |
-| 3 — Frontend | `cd mahal-v1\frontend && npm run dev` | **http://localhost:5173** ← the actual site |
+| ~~3 — Frontend~~ | now automatic — see §3.7 | **http://localhost:5173** ← the actual site |
+
+If you ever need to run the frontend manually instead (e.g. debugging),
+the original command still works: `cd mahal-v1\frontend && npm run dev`
+— same Quick Edit Mode caution as ORDS applies to that window too.
 
 If you ever need to run ORDS manually instead (e.g. debugging), the
 original command still works:
@@ -210,6 +214,38 @@ needed. If this is ever run on a machine where `N:` *is* a mapped or
 `subst` drive, resolve it to a real UNC/local path first — a SYSTEM task
 can't see per-user drive mappings.)
 
+## 3.7. Permanent frontend startup (recommended — do this once)
+
+Same reasoning and same fix as §3.5/§3.6, applied to the frontend
+(`npm run dev`, port 5173) — any foreground console window is one
+accidental click away from Quick Edit Mode pausing it, and won't come
+back after a crash or reboot on its own either.
+
+`backend/oracle/install-frontend-service.ps1` does this. **Run once, in
+an elevated PowerShell:**
+```
+cd N:\mahal\mahal-v1\backend\oracle
+.\install-frontend-service.ps1
+```
+
+What it sets up (task name **"Mahal Frontend Server"** in Task
+Scheduler):
+- Finds and kills only whatever's currently bound to port 5173 first
+- Starts automatically 3 minutes after every boot
+- Re-checks every 5 minutes and restarts it if it isn't running
+- Runs as SYSTEM with no visible console window
+- Logs to `frontend/frontend.log`
+- No execution time limit
+
+To check on it later:
+```
+schtasks /Query /TN "Mahal Frontend Server" /V /FO LIST
+```
+To stop it (e.g. for maintenance):
+```
+schtasks /End /TN "Mahal Frontend Server"
+```
+
 ## 5. Why step 2.2 exists — two gotchas that cost real time
 
 **A. Schema REST-enable is separate from table/view REST-enable.**
@@ -280,6 +316,8 @@ after the App 100 rebuild) is the current baseline — keep it up to date.
   `install-ords-service.ps1` once if you haven't yet.
 - ~~Wrap the backend as a proper Windows service~~ — done, see §3.6. Run
   `install-backend-service.ps1` once if you haven't yet.
+- ~~Wrap the frontend as a proper Windows service~~ — done, see §3.7. Run
+  `install-frontend-service.ps1` once if you haven't yet.
 - Deploying `mahal-v1` itself (Render) is a separate, not-yet-actioned
   track — see `DEPLOY.md` / `render.yaml`. Render's disk is ephemeral and
   can't reach a localhost-only Oracle DB, so a hosted deployment would run
@@ -297,9 +335,9 @@ after the App 100 rebuild) is the current baseline — keep it up to date.
    an OS command into an active `sqlplus` session, or a new command into a
    window already busy running a foreground server. Check the prompt
    before typing.
-4. Only the frontend window (window 3) needs to stay open now — ORDS and
-   the backend run as Scheduled Tasks (§3.5, §3.6) with no window to
-   close or click into.
+4. No windows need to stay open now — ORDS, the backend, and the
+   frontend all run as Scheduled Tasks (§3.5, §3.6, §3.7) with no window
+   to close or click into.
 5. `cmd.exe`'s plain `cd` does **not** switch drive letters — running
    `cd N:\mahal\...` while sitting on `C:` silently leaves you on `C:`
    still (next command fails with a confusing "file not found" pointing
