@@ -10,8 +10,10 @@ export default function OwnerDashboard() {
   const [leads, setLeads] = useState(null);
   const [error, setError] = useState("");
 
+  const isOwnerOrAdmin = user && (user.role === "owner" || user.role === "admin");
+
   useEffect(() => {
-    if (!user || user.role !== "owner") return;
+    if (!isOwnerOrAdmin) return;
     Promise.all([api.myVenues(), api.myLeads()])
       .then(([v, l]) => {
         setVenues(v.venues);
@@ -22,7 +24,7 @@ export default function OwnerDashboard() {
 
   if (!ready) return null;
 
-  if (!user || user.role !== "owner") {
+  if (!isOwnerOrAdmin) {
     return (
       <section className="page-section" style={{ maxWidth: 480 }}>
         <div className="eyebrow">Owner dashboard</div>
@@ -36,7 +38,7 @@ export default function OwnerDashboard() {
 
   return (
     <section className="page-section">
-      <div className="eyebrow">Owner dashboard</div>
+      <div className="eyebrow">{user.role === "admin" ? "Admin dashboard — all venues" : "Owner dashboard"}</div>
       <h2>Welcome, {user.name}</h2>
 
       {error && <div className="notice err">{error}</div>}

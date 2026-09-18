@@ -37,4 +37,9 @@ export const api = {
   sendContact: (payload) => request("/contact", { method: "POST", body: JSON.stringify(payload) }),
   myVenues: () => request("/owner/venues"),
   myLeads: () => request("/owner/inquiries"),
+  updateMe: (payload) => request("/auth/me", { method: "PATCH", body: JSON.stringify(payload) }),
+  changePassword: (payload) => request("/auth/change-password", { method: "POST", body: JSON.stringify(payload) }),
+  forgotPassword: (payload) => request("/auth/forgot-password", { method: "POST", body: JSON.stringify(payload) }),
+  resetPassword: (payload) => request("/auth/reset-password", { method: "POST", body: JSON.stringify(payload) }),
+  myInquiries: () => request("/inquiries/mine"),
 };

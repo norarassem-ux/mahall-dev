@@ -52,6 +52,9 @@ export default function Login() {
         </button>
         {error && <div className="notice err">{error}</div>}
       </form>
+      <p style={{ marginTop: 10, fontSize: 13.5 }}>
+        <Link to="/forgot-password">Forgot password?</Link>
+      </p>
       <p style={{ marginTop: 14, fontSize: 13.5, color: "var(--ink-faint)" }}>
         Demo login: client@example.com / password123. No account? <Link to="/register">Register</Link>.
       </p>

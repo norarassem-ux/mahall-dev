@@ -58,6 +58,13 @@ export const jsonStore = {
     persist();
     return user;
   },
+  updateUser(id, fields) {
+    const idx = state.users.findIndex((u) => u.id === id);
+    if (idx === -1) throw new Error(`User ${id} not found`);
+    state.users[idx] = { ...state.users[idx], ...fields };
+    persist();
+    return state.users[idx];
+  },
 
   // ---- inquiries (leads) ----
   listInquiries(venueId) {

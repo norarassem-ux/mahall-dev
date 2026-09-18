@@ -21,8 +21,10 @@ export default function Nav() {
       <div className="actions">
         {user ? (
           <>
-            <span className="eyebrow">{user.name}</span>
-            {user.role === "owner" && (
+            <Link to="/account" className="eyebrow" style={{ textDecoration: "none" }}>
+              {user.name}
+            </Link>
+            {(user.role === "owner" || user.role === "admin") && (
               <>
                 <Link to="/dashboard" className="btn">
                   Dashboard

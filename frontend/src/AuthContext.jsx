@@ -30,8 +30,14 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
+  // For after a profile edit (PATCH /auth/me) — updates the in-memory
+  // user without touching the token, which doesn't change.
+  function updateProfile(userData) {
+    setUser((u) => ({ ...u, ...userData }));
+  }
+
   return (
-    <AuthContext.Provider value={{ user, ready, login, logout }}>
+    <AuthContext.Provider value={{ user, ready, login, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

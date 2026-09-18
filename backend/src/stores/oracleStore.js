@@ -23,6 +23,17 @@ async function ordsPost(path, body) {
   return text ? JSON.parse(text) : null;
 }
 
+async function ordsPut(path, body) {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`ORDS PUT ${path} failed: ${res.status} ${await res.text()}`);
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
 function mapVenueRow(row) {
   return {
     id: row.id,
@@ -135,6 +146,22 @@ export const oracleStore = {
       password_hash: user.passwordHash,
     });
     return user;
+  },
+  // Partial update — fetches the current row so unspecified fields
+  // (notably password_hash) are preserved, then PUTs the merged row.
+  // AutoREST's item endpoint is keyed by the table's PK (id).
+  async updateUser(id, fields) {
+    const current = await this.getUserById(id);
+    if (!current) throw new Error(`User ${id} not found`);
+    const merged = { ...current, ...fields };
+    await ordsPut(`/users/${id}`, {
+      id: merged.id,
+      email: merged.email,
+      name: merged.name,
+      role: merged.role,
+      password_hash: merged.passwordHash,
+    });
+    return merged;
   },
 
   // ---- inquiries (leads) ----

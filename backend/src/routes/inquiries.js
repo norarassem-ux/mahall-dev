@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { db } from "../db.js";
-import { optionalAuth } from "../auth.js";
+import { optionalAuth, requireAuth, requireAdmin } from "../auth.js";
 
 export const inquiriesRouter = Router();
 
@@ -64,9 +64,23 @@ inquiriesRouter.post("/rfp", optionalAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/inquiries?venueId= — owner-side lead list (demo: no auth-scoping yet)
-inquiriesRouter.get("/", async (req, res, next) => {
+// GET /api/inquiries?venueId= — raw cross-venue listing. Previously had
+// NO auth check at all (any venueId, by anyone) despite the comment
+// calling it "owner-side" — that was a real gap, not intentional design;
+// /api/owner/inquiries (properly scoped to the caller's own venues) is
+// what the owner dashboard actually uses. Gated to admin now that a real
+// admin role exists; nothing in the frontend depended on it being open.
+inquiriesRouter.get("/", requireAuth, requireAdmin, async (req, res, next) => {
   try {
     res.json({ inquiries: await db.listInquiries(req.query.venueId) });
+  } catch (err) { next(err); }
+});
+
+// GET /api/inquiries/mine — the logged-in user's own submitted inquiries
+// (for the Account page), regardless of role.
+inquiriesRouter.get("/mine", requireAuth, async (req, res, next) => {
+  try {
+    const all = await db.listInquiries();
+    res.json({ inquiries: all.filter((i) => i.userId === req.user.sub) });
   } catch (err) { next(err); }
 });
