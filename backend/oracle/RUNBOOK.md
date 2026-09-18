@@ -55,6 +55,10 @@ Run in order, connected as `SYS AS SYSDBA` to `localhost:1522/freepdb1`:
 3. `enable_rest_mahaldb.sql` — enables REST on the individual tables/views.
 4. `seed_mahaldb.sql` — seeds 12 venues, 2 demo users, lookup data.
 5. `seed_reviews.sql` — seeds 24 reviews.
+6. `07_booking_approval.sql` — (triggered later, 2026-09-15; not part of
+   the original 1–5) creates the `MAHAL_BOOKING_APPROVAL` package that the
+   Manage Inquiries approve/reject workflow calls. Safe/re-runnable —
+   include it if you're ever re-provisioning from scratch.
 
 ```
 sqlplus sys/<your-sys-password>@localhost:1522/freepdb1 as sysdba
