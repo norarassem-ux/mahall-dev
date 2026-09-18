@@ -3,12 +3,15 @@ import { Link } from "react-router-dom";
 import { api } from "../api.js";
 import { useAuth } from "../AuthContext.jsx";
 import VenueCard from "../components/VenueCard.jsx";
+import VenueCalendar from "../components/VenueCalendar.jsx";
 
 export default function OwnerDashboard() {
   const { user, ready } = useAuth();
   const [venues, setVenues] = useState(null);
   const [leads, setLeads] = useState(null);
   const [error, setError] = useState("");
+  const [actioning, setActioning] = useState(null);
+  const [actionError, setActionError] = useState("");
 
   const isOwnerOrAdmin = user && (user.role === "owner" || user.role === "admin");
 
@@ -21,6 +24,24 @@ export default function OwnerDashboard() {
       })
       .catch((err) => setError(err.message));
   }, [user]);
+
+  async function handleDecision(inquiryId, action) {
+    setActionError("");
+    setActioning(inquiryId);
+    try {
+      if (action === "approve") {
+        await api.approveInquiry(inquiryId);
+        setLeads((prev) => prev.map((l) => (l.id === inquiryId ? { ...l, status: "approved" } : l)));
+      } else {
+        await api.rejectInquiry(inquiryId);
+        setLeads((prev) => prev.map((l) => (l.id === inquiryId ? { ...l, status: "rejected" } : l)));
+      }
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setActioning(null);
+    }
+  }
 
   if (!ready) return null;
 
@@ -59,6 +80,7 @@ export default function OwnerDashboard() {
       )}
 
       <h3 style={{ marginTop: 32, marginBottom: 12, fontSize: 18 }}>Leads</h3>
+      {actionError && <div className="notice err">{actionError}</div>}
       {!leads ? (
         <p>Loading…</p>
       ) : leads.length === 0 ? (
@@ -78,9 +100,36 @@ export default function OwnerDashboard() {
                 {l.guests && ` · ${l.guests} guests`}
               </div>
               {l.message && <p style={{ marginTop: 8, fontSize: 13.5 }}>{l.message}</p>}
+              {user.role === "admin" && (
+                <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-teal"
+                    disabled={actioning === l.id || l.status === "approved"}
+                    onClick={() => handleDecision(l.id, "approve")}
+                  >
+                    {actioning === l.id ? "Working…" : "Approve"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={actioning === l.id}
+                    onClick={() => handleDecision(l.id, "reject")}
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
+      )}
+
+      {user.role === "admin" && venues && venues.length > 0 && (
+        <>
+          <h3 style={{ marginTop: 32, marginBottom: 12, fontSize: 18 }}>Booking calendar</h3>
+          <VenueCalendar venues={venues} />
+        </>
       )}
     </section>
   );

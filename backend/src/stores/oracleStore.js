@@ -87,6 +87,19 @@ function mapInquiryRow(row) {
   };
 }
 
+function mapBookingRow(row) {
+  return {
+    id: row.id,
+    venueId: row.venue_id,
+    guestId: row.guest_id,
+    eventDate: row.event_date,
+    guestCount: row.guest_count,
+    status: row.status,
+    totalPrice: row.total_price,
+    createdAt: row.created_at,
+  };
+}
+
 export const oracleStore = {
   // ---- venues ----
   async listVenues() {
@@ -185,6 +198,25 @@ export const oracleStore = {
       user_id: inquiry.userId || null,
     });
     return inquiry;
+  },
+
+  // ---- bookings (created by approving an inquiry) ----
+  async listBookings(venueId) {
+    const data = await ordsGet("/bookings/?limit=1000");
+    const items = (data.items || []).map(mapBookingRow);
+    return venueId ? items.filter((b) => b.venueId === venueId) : items;
+  },
+
+  // Approve/reject call custom ORDS PL/SQL handlers (backend/oracle/
+  // 09_admin_dashboard.sql) rather than plain AutoREST — the guard
+  // rules (re-approve blocked, reject unconditional, guest resolution
+  // by email, price estimation) live in the DB so this behaves
+  // identically to the APEX "Manage Inquiries" Approve/Reject links.
+  async approveInquiry(id) {
+    await ordsPost("/inquiry-approve/", { inquiry_id: id });
+  },
+  async rejectInquiry(id) {
+    await ordsPost("/inquiry-reject/", { inquiry_id: id });
   },
 
   reset() {

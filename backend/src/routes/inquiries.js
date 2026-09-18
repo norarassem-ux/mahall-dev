@@ -84,3 +84,32 @@ inquiriesRouter.get("/mine", requireAuth, async (req, res, next) => {
     res.json({ inquiries: all.filter((i) => i.userId === req.user.sub) });
   } catch (err) { next(err); }
 });
+
+// POST /api/inquiries/:id/approve — admin-only. Turns the inquiry into a
+// `bookings` row (status "pending") and marks it "approved". Guard rules
+// (blocked only if the inquiry has no venue, or is already approved) and
+// guest-resolution/price-estimation live in the DB (Oracle: the
+// /inquiry-approve/ ORDS handler from backend/oracle/09_admin_dashboard.sql;
+// offline: db.approveInquiry's matching logic) so this stays consistent
+// with the same Approve action already live on APEX's Manage Inquiries page.
+inquiriesRouter.post("/:id/approve", requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const booking = await db.approveInquiry(req.params.id);
+    res.json({ ok: true, booking });
+  } catch (err) {
+    res.status(400).json({ error: err.message || "Could not approve inquiry" });
+  }
+});
+
+// POST /api/inquiries/:id/reject — admin-only. Unconditional, no guard —
+// "Reject can still override an approval" is an explicit product decision
+// (see AGENTS.md); a reject after an approval does not touch the booking
+// row it created.
+inquiriesRouter.post("/:id/reject", requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const inquiry = await db.rejectInquiry(req.params.id);
+    res.json({ ok: true, inquiry });
+  } catch (err) {
+    res.status(400).json({ error: err.message || "Could not reject inquiry" });
+  }
+});

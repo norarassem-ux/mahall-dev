@@ -32,3 +32,23 @@ ownerRouter.get("/inquiries", requireAuth, requireOwner, async (req, res, next) 
     res.json({ inquiries: inquiries.filter((i) => myVenueIds.has(i.venueId)) });
   } catch (err) { next(err); }
 });
+
+// GET /api/owner/bookings?venueId= — the calendar feed for a venue
+// (admins: any venue; owners: only their own — 403 if they ask for a
+// venue they don't own). Omit venueId to list every booking the caller
+// can see (admins: all; owners: across all their venues).
+ownerRouter.get("/bookings", requireAuth, requireOwner, async (req, res, next) => {
+  try {
+    const { venueId } = req.query;
+    if (req.user.role === "admin") {
+      return res.json({ bookings: await db.listBookings(venueId || undefined) });
+    }
+    const venues = await db.listVenues();
+    const myVenueIds = new Set(venues.filter((v) => v.ownerId === req.user.sub).map((v) => v.id));
+    if (venueId && !myVenueIds.has(venueId)) {
+      return res.status(403).json({ error: "Not your venue" });
+    }
+    const bookings = await db.listBookings(venueId || undefined);
+    res.json({ bookings: venueId ? bookings : bookings.filter((b) => myVenueIds.has(b.venueId)) });
+  } catch (err) { next(err); }
+});

@@ -42,4 +42,7 @@ export const api = {
   forgotPassword: (payload) => request("/auth/forgot-password", { method: "POST", body: JSON.stringify(payload) }),
   resetPassword: (payload) => request("/auth/reset-password", { method: "POST", body: JSON.stringify(payload) }),
   myInquiries: () => request("/inquiries/mine"),
+  approveInquiry: (id) => request(`/inquiries/${id}/approve`, { method: "POST" }),
+  rejectInquiry: (id) => request(`/inquiries/${id}/reject`, { method: "POST" }),
+  venueBookings: (venueId) => request(`/owner/bookings${venueId ? `?venueId=${encodeURIComponent(venueId)}` : ""}`),
 };
