@@ -65,6 +65,11 @@ function mapUserRow(row) {
     email: row.email,
     name: row.name,
     role: row.role,
+    // Null for every account except the 12 per-venue admins (see
+    // backend/oracle/10_venue_admin_scope.sql) — non-null scopes an
+    // admin to exactly one venue, same as an owner scoped to their own
+    // listings (see routes/owner.js's scopedVenueIds).
+    venueId: row.venue_id || null,
     passwordHash: row.password_hash,
     createdAt: row.created_at,
   };
@@ -156,6 +161,7 @@ export const oracleStore = {
       email: user.email,
       name: user.name,
       role: user.role,
+      venue_id: user.venueId || null,
       password_hash: user.passwordHash,
     });
     return user;
@@ -167,11 +173,16 @@ export const oracleStore = {
     const current = await this.getUserById(id);
     if (!current) throw new Error(`User ${id} not found`);
     const merged = { ...current, ...fields };
+    // venue_id is included even though `fields` never sets it directly —
+    // PUT replaces the whole row, so omitting it here would silently
+    // erase a venue-admin's scope the next time they change their
+    // password or edit their profile.
     await ordsPut(`/users/${id}`, {
       id: merged.id,
       email: merged.email,
       name: merged.name,
       role: merged.role,
+      venue_id: merged.venueId || null,
       password_hash: merged.passwordHash,
     });
     return merged;

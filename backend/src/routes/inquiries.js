@@ -70,9 +70,13 @@ inquiriesRouter.post("/rfp", optionalAuth, async (req, res, next) => {
 // /api/owner/inquiries (properly scoped to the caller's own venues) is
 // what the owner dashboard actually uses. Gated to admin now that a real
 // admin role exists; nothing in the frontend depended on it being open.
+// A scoped admin (req.user.venueId set — one of the 12 per-venue admin
+// accounts) can't widen this past their own venue even by passing a
+// different venueId query param.
 inquiriesRouter.get("/", requireAuth, requireAdmin, async (req, res, next) => {
   try {
-    res.json({ inquiries: await db.listInquiries(req.query.venueId) });
+    const venueId = req.user.venueId || req.query.venueId;
+    res.json({ inquiries: await db.listInquiries(venueId) });
   } catch (err) { next(err); }
 });
 
@@ -85,6 +89,26 @@ inquiriesRouter.get("/mine", requireAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// A scoped admin (req.user.venueId set — one of the 12 per-venue admin
+// accounts, see backend/oracle/10_venue_admin_scope.sql) may only
+// approve/reject inquiries for their own venue. admin@mahal.city
+// (venueId null) is unrestricted. Returns false (and has already
+// written the response) when the caller should not proceed.
+async function assertVenueAccess(req, res, inquiryId) {
+  if (!req.user.venueId) return true;
+  const inquiries = await db.listInquiries();
+  const inquiry = inquiries.find((i) => i.id === inquiryId);
+  if (!inquiry) {
+    res.status(404).json({ error: "Inquiry not found" });
+    return false;
+  }
+  if (inquiry.venueId !== req.user.venueId) {
+    res.status(403).json({ error: "Not your venue" });
+    return false;
+  }
+  return true;
+}
+
 // POST /api/inquiries/:id/approve — admin-only. Turns the inquiry into a
 // `bookings` row (status "pending") and marks it "approved". Guard rules
 // (blocked only if the inquiry has no venue, or is already approved) and
@@ -94,6 +118,7 @@ inquiriesRouter.get("/mine", requireAuth, async (req, res, next) => {
 // with the same Approve action already live on APEX's Manage Inquiries page.
 inquiriesRouter.post("/:id/approve", requireAuth, requireAdmin, async (req, res, next) => {
   try {
+    if (!(await assertVenueAccess(req, res, req.params.id))) return;
     const booking = await db.approveInquiry(req.params.id);
     res.json({ ok: true, booking });
   } catch (err) {
@@ -104,9 +129,10 @@ inquiriesRouter.post("/:id/approve", requireAuth, requireAdmin, async (req, res,
 // POST /api/inquiries/:id/reject — admin-only. Unconditional, no guard —
 // "Reject can still override an approval" is an explicit product decision
 // (see AGENTS.md); a reject after an approval does not touch the booking
-// row it created.
+// row it created. Still venue-scoped like approve, above.
 inquiriesRouter.post("/:id/reject", requireAuth, requireAdmin, async (req, res, next) => {
   try {
+    if (!(await assertVenueAccess(req, res, req.params.id))) return;
     const inquiry = await db.rejectInquiry(req.params.id);
     res.json({ ok: true, inquiry });
   } catch (err) {

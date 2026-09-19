@@ -59,7 +59,13 @@ export default function OwnerDashboard() {
 
   return (
     <section className="page-section">
-      <div className="eyebrow">{user.role === "admin" ? "Admin dashboard — all venues" : "Owner dashboard"}</div>
+      <div className="eyebrow">
+        {user.role === "admin"
+          ? user.venueId
+            ? "Admin dashboard — your venue"
+            : "Admin dashboard — all venues"
+          : "Owner dashboard"}
+      </div>
       <h2>Welcome, {user.name}</h2>
 
       {error && <div className="notice err">{error}</div>}

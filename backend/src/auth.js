@@ -4,7 +4,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev-only-secret-change-me";
 
 export function signToken(user) {
   return jwt.sign(
-    { sub: user.id, email: user.email, role: user.role, name: user.name },
+    { sub: user.id, email: user.email, role: user.role, name: user.name, venueId: user.venueId || null },
     JWT_SECRET,
     { expiresIn: "7d" }
   );
